@@ -1,11 +1,9 @@
 
 import java.awt.*;
 
-//for watcher methods
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import static java.nio.file.StandardWatchEventKinds.*;
+import java.io.IOException;
 import java.nio.file.*;
+import static java.nio.file.StandardWatchEventKinds.*;
 
 
 //import java.util.concurrent.TimeUnit;
@@ -19,18 +17,51 @@ import java.io.*;
 public class runBot {
     public static void main(String[] args) throws AWTException, IOException, InterruptedException
     {
-        DataInputStream str = new DataInputStream(new FileInputStream("/Users/kaitrias/Developer/runelite-lul/itsgonnawork.txt"));
+        WatchService watcher = FileSystems.getDefault().newWatchService();
+        Path path = Paths.get("/Users/kaitrias/Developer/runelite-lul");
 
-        while(true) {
-            while (str.available() > 0) {
-                double dd = str.readDouble();
-                System.out.println(dd);
-                System.out.println(str.available());
+        try {
+            WatchKey key = path.register(watcher,
+                    ENTRY_CREATE,
+                    ENTRY_DELETE,
+                    ENTRY_MODIFY);
+        } catch (IOException x) {
+            System.err.println(x);
+        }
+
+        boolean valid = true;
+
+        while(valid) {
+
+            WatchKey key;
+            try {
+                key = watcher.take();
+            } catch (InterruptedException x) {
+                return;
             }
 
-            WatcherTest ts = new WatcherTest();
-            ts.watchFile();
+            for (WatchEvent<?> event: key.pollEvents()) {
+                WatchEvent.Kind<?> kind = event.kind();
 
+                if (kind == OVERFLOW) {
+                    continue;
+                }
+
+                WatchEvent<Path> ev = (WatchEvent<Path>)event;
+                Path filename = ev.context();
+
+                if (kind == ENTRY_MODIFY) {
+                    DataInputStream str = new DataInputStream(new FileInputStream("/Users/kaitrias/Developer/runelite-lul/itsgonnawork.txt"));
+                    double dd = str.readDouble();
+                    System.out.println(dd);
+                    System.out.println(filename);
+                }
+            }
+
+            valid = key.reset();
+            if (!valid) {
+                break;
+            }
         }
     }
 }
